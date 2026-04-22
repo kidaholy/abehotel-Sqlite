@@ -1,0 +1,128 @@
+name: MongoDB Backup
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+
+  dump:
+    runs-on: ubuntu-latest
+    outputs:
+      backup_file: ${{ steps.dump.outputs.backup_file }}
+      timestamp: ${{ steps.dump.outputs.timestamp }}
+    steps:
+      - name: Install MongoDB Tools
+        run: |
+          wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+          sudo apt-get update -qq
+          sudo apt-get install -y mongodb-database-tools
+
+      - name: Run mongodump
+        id: dump
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="backup_${TIMESTAMP}.gz"
+          mongodump --uri="${{ secrets.MONGODB_URI }}" --archive="$BACKUP_FILE" --gzip
+          echo "backup_file=$BACKUP_FILE" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "Dump done: $BACKUP_FILE ($(du -sh $BACKUP_FILE | cut -f1))"
+
+      - name: Share dump between jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dump-${{ steps.dump.outputs.timestamp }}
+          path: ${{ steps.dump.outputs.backup_file }}
+          retention-days: 1
+
+  upload-backblaze:
+    needs: dump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download dump
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{ needs.dump.outputs.timestamp }}
+
+      - name: Install AWS CLI
+        run: pip install awscli
+
+      - name: Upload to Backblaze B2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          AWS_DEFAULT_REGION: us-east-005
+        run: |
+          aws s3 cp "${{ needs.dump.outputs.backup_file }}" \
+            "s3://${{ secrets.B2_BUCKET_NAME }}/mongodb-backups/${{ needs.dump.outputs.backup_file }}" \
+            --endpoint-url "${{ secrets.B2_ENDPOINT }}"
+          echo "Uploaded to Backblaze B2"
+
+      - name: Prune old backups (keep last 120)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          AWS_DEFAULT_REGION: us-east-005
+        run: |
+          aws s3 ls "s3://${{ secrets.B2_BUCKET_NAME }}/mongodb-backups/" \
+            --endpoint-url "${{ secrets.B2_ENDPOINT }}" \
+            | sort | head -n -120 | awk '{print $4}' \
+            | while read file; do
+                aws s3 rm "s3://${{ secrets.B2_BUCKET_NAME }}/mongodb-backups/$file" \
+                  --endpoint-url "${{ secrets.B2_ENDPOINT }}"
+              done
+
+  upload-github-artifact:
+    needs: dump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download dump
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{ needs.dump.outputs.timestamp }}
+
+      - name: Save as long-term artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongodb-backup-${{ needs.dump.outputs.timestamp }}
+          path: ${{ needs.dump.outputs.backup_file }}
+          retention-days: 90
+
+  upload-local:
+    needs: dump
+    # Pin to Windows self-hosted runner labels so this job
+    # does not accidentally match the wrong runner type.
+    runs-on: [self-hosted, windows, x64]
+    steps:
+      - name: Download dump
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{ needs.dump.outputs.timestamp }}
+
+      - name: Save backup to local folder
+        shell: pwsh
+        run: |
+          $backupDir = "C:\mongodb-backups"
+          if (!(Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
+          Copy-Item "${{ needs.dump.outputs.backup_file }}" "$backupDir\${{ needs.dump.outputs.backup_file }}"
+          Write-Host "Saved to $backupDir"
+
+      - name: Restore to local MongoDB
+        shell: pwsh
+        run: |
+          $file = "C:\mongodb-backups\${{ needs.dump.outputs.backup_file }}"
+          $uri = "${{ secrets.LOCAL_MONGODB_URI }}"
+          mongorestore --uri="$uri" --archive="$file" --gzip --drop
+          Write-Host "Restored to local MongoDB"
+
+      - name: Prune local backups (keep last 120)
+        shell: pwsh
+        run: |
+          $backupDir = "C:\mongodb-backups"
+          $files = Get-ChildItem "$backupDir\backup_*.gz" | Sort-Object Name
+          if ($files.Count -gt 120) {
+            $toDelete = $files | Select-Object -First ($files.Count - 120)
+            foreach ($f in $toDelete) { Remove-Item $f.FullName }
+          }
