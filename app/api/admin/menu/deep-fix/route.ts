@@ -4,7 +4,6 @@ import MenuItem from "@/lib/models/menu-item"
 import Vip1MenuItem from "@/lib/models/vip1-menu-item"
 import Vip2MenuItem from "@/lib/models/vip2-menu-item"
 import { validateSession } from "@/lib/auth"
-import mongoose from "mongoose"
 
 export async function POST(request: Request) {
   try {
@@ -43,18 +42,18 @@ export async function POST(request: Request) {
             }
 
             // If it's not where it should be, move it OR delete if it's a duplicate
-            if (source.model.modelName !== targetModel.modelName) {
+            if (source.model !== targetModel) {
                 const alreadyExistsInTarget = await (targetModel as any).findById(item._id)
                 
                 if (alreadyExistsInTarget) {
                     // It exists in two places! The current source is wrong, delete it.
-                    console.log(`[DE-DUPE] Deleting ${item.name} from ${source.model.modelName} (already in ${targetModel.modelName})`)
+                    console.log(`[DE-DUPE] Deleting ${item.name} from ${source.name} (already in target)`)
                     await (source.model as any).findByIdAndDelete(item._id)
                     migratedCount++ // Technically a "fixed" item
                 } else {
                     // Move it
-                    console.log(`[MOVE] Moving ${item.name} from ${source.model.modelName} to ${targetModel.modelName}`)
-                    await new targetModel({ ...item }).save()
+                    console.log(`[MOVE] Moving ${item.name} from ${source.name} to target`)
+                    await (targetModel as any).create({ ...item, _id: item._id })
                     await (source.model as any).findByIdAndDelete(item._id)
                     migratedCount++
                 }
@@ -67,13 +66,13 @@ export async function POST(request: Request) {
     // 2. EXPLICIT PURGE: Find any remaining item in Standard table that belongs to VIP and DELETE IT
     // This addresses the user's issue where "deleted VIP table data but still see items" 
     // because they are being leaked from the standard table.
-    const lingeringVipInStandard = await MenuItem.find({
+    const lingeringVipInStandard = await (MenuItem as any).find({
         $or: [
             { category: /VIP/i },
             { name: /VIP/i },
             { isVIP: true }
         ]
-    })
+    }).lean()
     
     let purgedCount = 0
     for (const item of lingeringVipInStandard) {

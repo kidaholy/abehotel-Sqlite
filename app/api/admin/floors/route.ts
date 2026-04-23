@@ -79,10 +79,10 @@ export async function PUT(request: Request) {
 
         console.log("🛠️ Attempting update for floor:", id, updateObj)
 
-        const updatedFloor = await (Floor as any).findOneAndUpdate(
-            { _id: id },
-            { $set: updateObj },
-            { new: true, lean: true }
+        const updatedFloor = await (Floor as any).findByIdAndUpdate(
+            id,
+            updateObj,
+            { new: true }
         )
 
         console.log("✅ Floor updated result:", updatedFloor)

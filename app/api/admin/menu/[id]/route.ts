@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import mongoose from "mongoose"
 import { connectDB } from "@/lib/db"
 import MenuItem from "@/lib/models/menu-item"
 import { validateSession } from "@/lib/auth"
@@ -22,9 +21,7 @@ export async function PUT(request: Request, context: any) {
 
     console.log(`[STANDARD] PUT request for _id: ${params.id} in menuitems`)
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
-      return NextResponse.json({ message: "Invalid ID format" }, { status: 400 })
-    }
+    if (!params.id) return NextResponse.json({ message: "Missing id" }, { status: 400 })
 
     const updatePayload: any = {
       name: data.name?.trim(),
@@ -80,9 +77,7 @@ export async function DELETE(request: Request, context: any) {
     await connectDB()
     console.log(`[STANDARD] DELETE request for _id: ${params.id} in menuitems`)
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
-      return NextResponse.json({ message: "Invalid ID format" }, { status: 400 })
-    }
+    if (!params.id) return NextResponse.json({ message: "Missing id" }, { status: 400 })
 
     const menuItem = await (MenuItem as any).findByIdAndDelete(params.id)
 

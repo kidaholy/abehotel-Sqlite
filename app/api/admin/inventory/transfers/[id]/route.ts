@@ -4,7 +4,6 @@ import TransferRequest from "@/lib/models/transfer-request"
 import Stock from "@/lib/models/stock"
 import StoreLog from "@/lib/models/store-log"
 import { validateSession } from "@/lib/auth"
-import mongoose from "mongoose"
 import User from "@/lib/models/user"
 import { addNotification } from "@/lib/notifications"
 
@@ -53,57 +52,39 @@ export async function PUT(
             return NextResponse.json(transferReq)
         }
 
-        // Approval Flow - MUST BE ATOMIC
-        const session = await mongoose.startSession()
-        session.startTransaction()
+        const stockItem = await (Stock as any).findById((transferReq as any).stockId)
+        if (!stockItem) return NextResponse.json({ message: "Stock item not found" }, { status: 404 })
 
-        try {
-            const stockItem = await Stock.findById(transferReq.stockId).session(session)
-            if (!stockItem) {
-                throw new Error("Stock item not found")
-            }
-
-            if (stockItem.storeQuantity < transferReq.quantity) {
-                throw new Error(`Insufficient store quantity. Current: ${stockItem.storeQuantity}`)
-            }
-
-            // Perform moves
-            stockItem.storeQuantity -= transferReq.quantity
-            stockItem.quantity += transferReq.quantity
-            await stockItem.save({ session })
-
-            // Log the transfer
-            await StoreLog.create([{
-                stockId: transferReq.stockId,
-                type: 'TRANSFER_OUT',
-                quantity: transferReq.quantity,
-                unit: stockItem.unit,
-                user: user.id,
-                notes: `Internal Transfer (Approved Request: ${transferReq._id}). ${transferReq.notes || ''}`,
-                date: new Date()
-            }], { session })
-
-            // Update request
-            transferReq.status = 'approved'
-            transferReq.handledBy = user.id as any
-            await transferReq.save({ session })
-
-            // Notify requester
-            addNotification(
-                "success",
-                `Transfer Request for ${transferReq.quantity} units of ${stockItem.name} was approved!`,
-                undefined,
-                transferReq.requestedBy.toString()
-            )
-
-            await session.commitTransaction()
-            return NextResponse.json(transferReq)
-        } catch (err: any) {
-            await session.abortTransaction()
-            return NextResponse.json({ message: err.message }, { status: 400 })
-        } finally {
-            session.endSession()
+        if ((stockItem as any).storeQuantity < (transferReq as any).quantity) {
+            return NextResponse.json({ message: `Insufficient store quantity. Current: ${(stockItem as any).storeQuantity}` }, { status: 400 })
         }
+
+        ;(stockItem as any).storeQuantity -= (transferReq as any).quantity
+        ;(stockItem as any).quantity += (transferReq as any).quantity
+        await (stockItem as any).save()
+
+        await (StoreLog as any).create({
+            stockId: (transferReq as any).stockId,
+            type: 'TRANSFER_OUT',
+            quantity: (transferReq as any).quantity,
+            unit: (stockItem as any).unit,
+            user: user.id,
+            notes: `Internal Transfer (Approved Request: ${(transferReq as any)._id}). ${(transferReq as any).notes || ''}`,
+            date: new Date()
+        })
+
+        ;(transferReq as any).status = 'approved'
+        ;(transferReq as any).handledBy = user.id as any
+        await (transferReq as any).save()
+
+        addNotification(
+            "success",
+            `Transfer Request for ${(transferReq as any).quantity} units of ${(stockItem as any).name} was approved!`,
+            undefined,
+            (transferReq as any).requestedBy?.toString?.() || (transferReq as any).requestedBy
+        )
+
+        return NextResponse.json(transferReq)
 
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: error.message.includes("Unauthorized") ? 401 : 500 })

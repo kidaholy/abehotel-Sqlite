@@ -6,7 +6,7 @@ import { validateSession } from "@/lib/auth"
 export async function GET(request: Request) {
     try {
         await connectDB()
-        const tables = await Table.find({}).sort({ tableNumber: 1 }).populate('floorId')
+        const tables = await Table.find({}).sort({ tableNumber: 1 }).populate('floorId').lean()
         return NextResponse.json(tables)
     } catch (error: any) {
         return NextResponse.json({ message: "Failed to fetch tables" }, { status: 500 })

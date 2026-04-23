@@ -52,27 +52,28 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: "Key and value are required" }, { status: 400 })
     }
 
-    // Update or create setting
-    const setting = await Settings.findOneAndUpdate(
-      { key },
-      {
+    // Update or create setting without findOneAndUpdate
+    let setting = await Settings.findOne({ key })
+    if (setting) {
+      setting = await Settings.findByIdAndUpdate(setting._id, {
+        value: String(value),
+        type: type || "string",
+        description
+      }, { new: true })
+    } else {
+      setting = await Settings.create({
         key,
         value: String(value),
         type: type || "string",
         description
-      },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true
-      }
-    )
+      })
+    }
 
     console.log(`✅ Setting updated: ${key} (Type: ${type}, Value Length: ${String(value).length})`)
     return NextResponse.json(setting)
   } catch (error: any) {
     console.error("Update settings error:", error)
     const status = error.message?.includes("Unauthorized") ? 401 : 500
-    return NextResponse.json({ message: "Failed to update setting" }, { status })
+    return NextResponse.json({ message: error.message, stack: error.stack }, { status })
   }
 }

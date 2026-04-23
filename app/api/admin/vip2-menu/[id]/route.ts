@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { connectDB } from "@/lib/db"
 import Vip2MenuItem from "@/lib/models/vip2-menu-item"
 import { validateSession } from "@/lib/auth"
-import mongoose from "mongoose"
 
 // =============================================================================
 // VIP 2 MENU ITEM — Update & Delete ONLY from `vip2menuitems`
@@ -21,9 +20,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     console.log(`[VIP2] PUT request for _id: ${id} in vip2menuitems`)
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ message: "Invalid ID format" }, { status: 400 })
-    }
+    if (!id) return NextResponse.json({ message: "Missing id" }, { status: 400 })
 
     const updatePayload = {
       name: data.name?.trim(),

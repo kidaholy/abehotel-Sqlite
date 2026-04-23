@@ -106,8 +106,9 @@ export async function GET(request: Request) {
       hasMore: skip + limit < total
     })
   } catch (error: any) {
+    console.error("DEBUG CRASH ERROR:", error)
     const status = error.message?.includes("Unauthorized") ? 401 : 500
-    return NextResponse.json({ message: "Failed to get requests" }, { status })
+    return NextResponse.json({ message: error.stack || error.message }, { status })
   }
 }
 

@@ -210,11 +210,15 @@ export async function PUT(request: Request, context: any) {
       console.log(`🔑 [API] Status: ${updated.status}`)
       console.log(`🔑 [API] =========================================`)
       
-      const roomUpdate = await Room.findOneAndUpdate(
-        { roomNumber: updated.roomNumber },
-        { status: "available" },
-        { new: true }
-      )
+      let roomUpdate = null
+      const targetRoom = await Room.findOne({ roomNumber: updated.roomNumber })
+      if (targetRoom) {
+        roomUpdate = await Room.findByIdAndUpdate(
+          targetRoom._id,
+          { status: "available" },
+          { new: true }
+        )
+      }
       if (roomUpdate) {
         console.log(`✅ [API] Room ${updated.roomNumber} successfully released to available status`)
         console.log(`✅ [API] Room previous status: ${roomUpdate.status}`)

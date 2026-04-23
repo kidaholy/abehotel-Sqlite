@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Find user
-    const user = await User.findOne({ email }).lean()
+    const user = await User.findOne({ email })
 
     if (!user) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 401 })
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     // Lookup floor number if user has a floor assignment
     let floorNumber = ""
     if (user.floorId) {
-      const floor = await Floor.findById(user.floorId).lean()
+      const floor = await Floor.findById(user.floorId)
       if (floor) floorNumber = floor.floorNumber
     }
 

@@ -17,18 +17,16 @@ export async function GET() {
     }
 
     // Create admin user
-    const hashedPassword = await bcrypt.hash("123456", 10)
+    const hashedPassword = await bcrypt.hash("12345678", 10)
 
-    const adminUser = new User({
+    const adminUser = await User.create({
       name: "Super Admin",
       email: "kidayos2014@gmail.com",
       password: hashedPassword,
-      plainPassword: "123456",
+      plainPassword: "12345678",
       role: "admin",
       isActive: true
     })
-
-    await adminUser.save()
 
     // Ensure other collections are initialized
     await Promise.all([
@@ -45,7 +43,7 @@ export async function GET() {
     const cashierPassword = await bcrypt.hash("cashier123", 10)
     const chefPassword = await bcrypt.hash("chef123", 10)
 
-    const cashierUser = new User({
+    const cashierUser = await User.create({
       name: "Cashier User",
       email: "cashier@primeaddis.com",
       password: cashierPassword,
@@ -53,16 +51,13 @@ export async function GET() {
       isActive: true
     })
 
-    const chefUser = new User({
+    const chefUser = await User.create({
       name: "Chef User",
       email: "chef@primeaddis.com",
       password: chefPassword,
       role: "chef",
       isActive: true
     })
-
-    await cashierUser.save()
-    await chefUser.save()
 
     return NextResponse.json({
       message: "Admin users created successfully!",

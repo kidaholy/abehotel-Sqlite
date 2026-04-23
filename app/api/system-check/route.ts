@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import mongoose from "mongoose"
 import { connectDB } from "@/lib/db"
 import User from "@/lib/models/user"
 import MenuItem from "@/lib/models/menu-item"
@@ -22,7 +21,7 @@ export async function GET(request: Request) {
     try {
       await connectDB()
       checks.database.status = "✅ Connected"
-      checks.database.details = "MongoDB Atlas connection successful"
+      checks.database.details = "SQLite connection successful"
 
 
     } catch (error) {
@@ -32,8 +31,8 @@ export async function GET(request: Request) {
 
     // Check collections
     try {
-      const userCount = await User.countDocuments()
-      const menuItemCount = await MenuItem.countDocuments()
+      const userCount = await (User as any).countDocuments()
+      const menuItemCount = await (MenuItem as any).countDocuments()
 
       checks.collections.status = "✅ Available"
       checks.collections.details = {
@@ -54,11 +53,17 @@ export async function GET(request: Request) {
 
       // Fetch fresh user data to return to client
       if (decoded.id) {
-        const rawUser = await User.findById(decoded.id).select("-password").populate("floorId").lean() as any
-        if (rawUser && rawUser.floorId && typeof rawUser.floorId === 'object') {
-          currentUser = { ...rawUser, floorNumber: rawUser.floorId.floorNumber, floorId: rawUser.floorId._id }
-        } else {
-          currentUser = rawUser
+        const rawUser = await (User as any).findById(decoded.id) as any
+        if (rawUser) {
+          const plain = rawUser.toObject ? rawUser.toObject() : rawUser
+          delete plain.password
+          if (plain.floorId) {
+            const floor = await (Floor as any).findById(plain.floorId) as any
+            const floorPlain = floor?.toObject ? floor.toObject() : floor
+            currentUser = { ...plain, floorNumber: floorPlain?.floorNumber }
+          } else {
+            currentUser = plain
+          }
         }
       }
     } catch (error: any) {
@@ -75,7 +80,7 @@ export async function GET(request: Request) {
     checks.environment.status = "✅ Loaded"
     checks.environment.details = {
       nodeEnv: process.env.NODE_ENV || "development",
-      mongoUri: process.env.MONGODB_URI ? "Set" : "Missing",
+      sqlitePath: process.env.SQLITE_PATH ? "Set" : "Default (data/abehotel.sqlite)",
       jwtSecret: process.env.JWT_SECRET ? "Set" : "Missing"
     }
 

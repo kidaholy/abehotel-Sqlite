@@ -133,11 +133,14 @@ export async function POST(request: Request) {
         let expense
         if (existingExpense) {
             // Update existing expense
-            expense = await DailyExpense.findOneAndUpdate(
-                { date: expenseDate },
-                expenseData,
-                { new: true, runValidators: true }
-            )
+            expense = await DailyExpense.findOne({ date: expenseDate })
+            if (expense) {
+                expense = await DailyExpense.findByIdAndUpdate(
+                    expense._id,
+                    expenseData,
+                    { new: true }
+                )
+            }
         } else {
             // Create new expense
             expense = await DailyExpense.create(expenseData)
@@ -147,10 +150,10 @@ export async function POST(request: Request) {
         if (items && items.length > 0) {
             for (const item of items) {
                 if (item.quantity > 0) {
-                    await Stock.findOneAndUpdate(
-                        { name: { $regex: new RegExp(`^${item.name}`, 'i') } },
-                        { $inc: { quantity: item.quantity } }
-                    )
+                    const stockUpdateTarget = await Stock.findOne({ name: { $regex: new RegExp(`^${item.name}`, 'i') } })
+                    if (stockUpdateTarget) {
+                        await Stock.findByIdAndUpdate(stockUpdateTarget._id, { $inc: { quantity: item.quantity } })
+                    }
                 }
             }
         }

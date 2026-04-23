@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import mongoose from "mongoose"
 import { connectDB } from "@/lib/db"
 import User from "@/lib/models/user"
 import { validateSession } from "@/lib/auth"
@@ -20,7 +19,9 @@ export async function GET(request: Request, context: any) {
 
     await connectDB()
 
-    const user = await User.findById(params.id).select("-password").lean()
+    const userDoc = await (User as any).findById(params.id)
+    const user = userDoc?.toObject ? userDoc.toObject() : userDoc
+    if (user) delete (user as any).password
 
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 })
@@ -99,31 +100,16 @@ export async function PUT(request: Request, context: any) {
       return NextResponse.json({ message: "No user ID provided" }, { status: 400 })
     }
 
-    if (userId.length !== 24) {
-      console.log("❌ Invalid user ID format:", userId, "Length:", userId.length)
-      return NextResponse.json({ message: `Invalid user ID format. Expected 24 characters, got ${userId.length}` }, { status: 400 })
-    }
-
-    // Validate ObjectId hex format
-    if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
-      console.log("❌ Invalid ObjectId hex format:", userId)
-      return NextResponse.json({ message: "Invalid ObjectId hex format" }, { status: 400 })
-    }
+    // SQLite IDs are UUIDs (or arbitrary strings). Only require presence.
 
     // Check if user exists
-    let existingUser
-    try {
-      existingUser = await User.findById(userId)
-      console.log("🔍 User lookup result:", existingUser ? "Found" : "Not found")
-    } catch (mongoError: any) {
-      console.log("❌ MongoDB lookup error:", mongoError.message)
-      return NextResponse.json({ message: `Database lookup error: ${mongoError.message}` }, { status: 400 })
-    }
+    const existingUser = await (User as any).findById(userId)
+    console.log("🔍 User lookup result:", existingUser ? "Found" : "Not found")
 
     if (!existingUser) {
       // Let's also try to find all users to debug
-      const allUsers = await User.find({}).select("_id name email").lean()
-      console.log("📋 All users in database:", allUsers.map(u => ({ id: u._id.toString(), email: u.email })))
+      const allUsers = await (User as any).find({}).limit(200).lean()
+      console.log("📋 All users in database:", allUsers.map((u: any) => ({ id: u._id?.toString?.() ?? u._id, email: u.email })))
       return NextResponse.json({ message: "User not found" }, { status: 404 })
     }
 
@@ -180,11 +166,11 @@ export async function PUT(request: Request, context: any) {
     // Update user
     let updatedUser
     try {
-      updatedUser = await User.findByIdAndUpdate(
+      updatedUser = await (User as any).findByIdAndUpdate(
         userId,
         updateData,
         { new: true, runValidators: true }
-      ).select("-password")
+      )
 
       console.log("✅ MongoDB update operation completed")
       console.log("📄 Updated user result:", updatedUser ? "Success" : "No user returned")
@@ -212,7 +198,9 @@ export async function PUT(request: Request, context: any) {
 
     // Verify the update by re-fetching the user
     try {
-      const verificationUser = await User.findById(userId).select("-password").lean()
+      const vDoc = await (User as any).findById(userId)
+      const verificationUser = vDoc?.toObject ? vDoc.toObject() : vDoc
+      if (verificationUser) delete (verificationUser as any).password
       console.log("🔍 Verification fetch result:", verificationUser ? "Found" : "Not found")
 
       if (verificationUser) {
@@ -239,7 +227,11 @@ export async function PUT(request: Request, context: any) {
 
     return NextResponse.json({
       message: "User updated successfully",
-      user: updatedUser,
+      user: (() => {
+        const u = (updatedUser as any)?.toObject ? (updatedUser as any).toObject() : updatedUser
+        if (u) delete (u as any).password
+        return u
+      })(),
     })
   } catch (error: any) {
     console.error("❌ Update user error:", error)
@@ -264,11 +256,7 @@ export async function DELETE(request: Request, context: any) {
     await connectDB()
     console.log("📊 Database connected for user deletion")
 
-    // Validate ObjectId format using mongoose
-    if (!params.id || !/^[0-9a-fA-F]{24}$/.test(params.id)) {
-      console.error("❌ Invalid ObjectId format for deletion:", params.id)
-      return NextResponse.json({ message: "Invalid user ID format" }, { status: 400 })
-    }
+    if (!params.id) return NextResponse.json({ message: "Missing user ID" }, { status: 400 })
 
     // Check if user exists
     const existingUser = await User.findById(params.id)
@@ -290,7 +278,7 @@ export async function DELETE(request: Request, context: any) {
 
     // Prevent deleting the last admin
     if (existingUser.role === "admin") {
-      const adminCount = await User.countDocuments({ role: "admin" })
+      const adminCount = await (User as any).countDocuments({ role: "admin" })
       if (adminCount <= 1) {
         return NextResponse.json({ message: "Cannot delete the last admin user" }, { status: 400 })
       }
@@ -299,7 +287,7 @@ export async function DELETE(request: Request, context: any) {
     console.log("💾 Deleting user from database:", existingUser.email)
 
     // Delete user
-    await User.findByIdAndDelete(params.id)
+    await (User as any).findByIdAndDelete(params.id)
 
     console.log("✅ User deleted successfully:", existingUser.email)
 

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import mongoose from "mongoose"
 import { connectDB } from "@/lib/db"
 import Order from "@/lib/models/order"
 import MenuItem from "@/lib/models/menu-item"
@@ -87,7 +86,7 @@ export async function GET(request: Request) {
         ]
       } else {
         // Force no results if role is display but no floor is assigned
-        query.floorId = new mongoose.Types.ObjectId()
+        query.floorId = "__no_results__"
       }
     }
 
@@ -241,6 +240,8 @@ export async function POST(request: Request) {
     const maxOrderNumber = numericOrders.length > 0 ? Math.max(...numericOrders) : 0;
     let nextOrderNumber = maxOrderNumber + 1;
 
+    const isBuyAndGo = tableNumber === "Buy&Go"
+
     // Lookup floor
     let floorId = body.floorId || (tableData ? (tableData as any).floorId : undefined) || (decoded.role === 'cashier' ? decoded.floorId : undefined)
     let floorNumber = body.floorNumber || ""
@@ -258,7 +259,6 @@ export async function POST(request: Request) {
     }
 
     // Create order data
-    const isBuyAndGo = tableNumber === "Buy&Go"
 
     const orderData = {
       items: items.map((item: any) => {

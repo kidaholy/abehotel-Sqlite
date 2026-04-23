@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import mongoose from "mongoose"
 import { connectDB } from "@/lib/db"
 import Category from "@/lib/models/category"
 import MenuItem from "@/lib/models/menu-item"
@@ -19,9 +18,7 @@ export async function DELETE(request: Request, context: any) {
 
         await connectDB()
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return NextResponse.json({ message: "Invalid category ID format" }, { status: 400 })
-        }
+        if (!id) return NextResponse.json({ message: "Missing category id" }, { status: 400 })
 
         const categoryToDelete = await Category.findById(id)
         if (!categoryToDelete) {
@@ -29,7 +26,7 @@ export async function DELETE(request: Request, context: any) {
         }
 
         const { name: oldName, type } = categoryToDelete
-        await Category.findByIdAndDelete(id)
+        await (Category as any).findByIdAndDelete(id)
 
         // Sync items - set to default/Uncategorized
         const newCategoryName = type === 'fixed-asset' ? 'General' : 'Uncategorized'
