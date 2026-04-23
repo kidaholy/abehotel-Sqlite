@@ -23,16 +23,45 @@ async function migrate() {
 
   const url = new URL(PG_URL);
   
-  const pgClient = new Client({ 
-    host: url.hostname === 'localhost' || url.hostname === '::1' ? '127.0.0.1' : url.hostname,
-    port: parseInt(url.port || '5432'),
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: decodeURIComponent(url.pathname.substring(1)),
-    ssl: { rejectUnauthorized: false }
-  });
+  const possibleHosts = [
+    '/var/run/postgresql',
+    '/var/lib/pgsql',
+    '/run/postgresql',
+    '/tmp',
+    '127.0.0.1',
+    '69.72.244.65'
+  ];
 
-  await pgClient.connect();
+  let pgClient;
+  let connected = false;
+
+  for (const host of possibleHosts) {
+    console.log(`   Trying host: ${host} ...`);
+    try {
+      pgClient = new Client({ 
+        host: host,
+        port: parseInt(url.port || '5432'),
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: decodeURIComponent(url.pathname.substring(1)),
+        ssl: false // Server strictly forbids SSL
+      });
+      
+      await pgClient.connect();
+      console.log(`   ✅ Successfully connected via: ${host}`);
+      connected = true;
+      break;
+    } catch (err) {
+      if (pgClient) {
+        await pgClient.end().catch(() => {});
+      }
+    }
+  }
+
+  if (!connected) {
+    console.error("❌ FAILED to find any working connection wrapper for PostgreSQL.");
+    process.exit(1);
+  }
 
   console.log("🍃 Connecting to MongoDB Atlas...");
   await mongoose.connect(MONGODB_URI);
