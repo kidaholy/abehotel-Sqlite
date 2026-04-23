@@ -180,10 +180,11 @@ export class PgDocStore {
   private pool: Pool
 
   constructor(connectionString: string) {
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Forcefully rewrite localhost to 127.0.0.1 to avoid Node.js ipv6 resolution block on cPanel
+    const sanitizedUrl = connectionString.replace('localhost', '127.0.0.1');
+
     this.pool = new Pool({ 
-      connectionString,
-      ...(isProduction ? { ssl: { rejectUnauthorized: false } } : {})
+      connectionString: sanitizedUrl
     })
     
     // Initialize standard docs table schema asynchronously
