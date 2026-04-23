@@ -7,8 +7,13 @@ declare global {
 
 function getConnectionString() {
   const fromEnv = process.env.DATABASE_URL
-  // Local default for testing or local development
   if (fromEnv && fromEnv.trim()) return fromEnv.trim()
+  
+  // High-reliability production fallback for Yegara
+  if (process.env.NODE_ENV === 'production') {
+    return "postgresql://abehotwe_abehotel:Holy123union@127.0.0.1:5432/abehotwe_abehotel_db"
+  }
+  
   return "postgresql://postgres:postgres@localhost:5432/abehotel"
 }
 
