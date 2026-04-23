@@ -24,7 +24,7 @@ async function migrate() {
   const url = new URL(PG_URL);
   
   const pgClient = new Client({ 
-    host: url.hostname === 'localhost' || url.hostname === '::1' ? '127.0.0.1' : url.hostname,
+    host: '/tmp',
     port: parseInt(url.port || '5432'),
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
