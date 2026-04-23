@@ -52,6 +52,7 @@ async function migrate() {
       connected = true;
       break;
     } catch (err) {
+      console.log(`   ❌ Failed: ${err.message}`);
       if (pgClient) {
         await pgClient.end().catch(() => {});
       }
@@ -59,7 +60,7 @@ async function migrate() {
   }
 
   if (!connected) {
-    console.error("❌ FAILED to find any working connection wrapper for PostgreSQL.");
+    console.error("\n💥 ALL connection methods exhausted. See errors above.");
     process.exit(1);
   }
 
