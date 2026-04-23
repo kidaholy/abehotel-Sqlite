@@ -180,7 +180,11 @@ export class PgDocStore {
   private pool: Pool
 
   constructor(connectionString: string) {
-    this.pool = new Pool({ connectionString })
+    const isProduction = process.env.NODE_ENV === 'production';
+    this.pool = new Pool({ 
+      connectionString,
+      ...(isProduction ? { ssl: { rejectUnauthorized: false } } : {})
+    })
     
     // Initialize standard docs table schema asynchronously
     this.pool.query(`
