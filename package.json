@@ -10,7 +10,8 @@
     "server": "ts-node server/server.ts",
     "server-dev": "nodemon --watch server server/server.ts",
     "server-build": "tsc -p server/tsconfig.json",
-    "server-start": "node server/dist/server.js"
+    "server-start": "node server/dist/server.js",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
