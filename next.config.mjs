@@ -17,6 +17,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
+  experimental: {
+    cpus: 1,
+    workerThreads: false,
+  },
 };
 
 export default nextConfig;
