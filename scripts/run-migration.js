@@ -13,7 +13,25 @@ if (!PG_URL) {
 
 async function migrate() {
   console.log("🐘 Connecting to Yegara PostgreSQL...");
-  const pgClient = new Client({ connectionString: PG_URL });
+
+  // Forcefully remove any hidden cPanel environment variables that intercept PG host resolution
+  delete process.env.PGHOST;
+  delete process.env.PGPORT;
+  delete process.env.PGUSER;
+  delete process.env.PGPASSWORD;
+  delete process.env.PGDATABASE;
+
+  const url = new URL(PG_URL);
+  
+  const pgClient = new Client({ 
+    host: url.hostname === 'localhost' || url.hostname === '::1' ? '127.0.0.1' : url.hostname,
+    port: parseInt(url.port || '5432'),
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: decodeURIComponent(url.pathname.substring(1)),
+    ssl: false
+  });
+
   await pgClient.connect();
 
   console.log("🍃 Connecting to MongoDB Atlas...");
