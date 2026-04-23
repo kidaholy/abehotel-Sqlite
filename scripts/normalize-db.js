@@ -31,14 +31,58 @@ async function normalize() {
     process.exit(1);
   }
 
-  const pgClient = new Client({ 
-    connectionString: PG_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  // Forcefully remove any hidden cPanel environment variables that intercept PG host resolution
+  delete process.env.PGHOST;
+  delete process.env.PGPORT;
+  delete process.env.PGUSER;
+  delete process.env.PGPASSWORD;
+  delete process.env.PGDATABASE;
+
+  const url = new URL(PG_URL);
+  
+  const possibleHosts = [
+    '/var/run/postgresql',
+    '/var/lib/pgsql',
+    '/run/postgresql',
+    '/tmp',
+    '127.0.0.1',
+    '69.72.244.65'
+  ];
+
+  let pgClient;
+  let connected = false;
+
+  for (const host of possibleHosts) {
+    console.log(`   Trying host: ${host} ...`);
+    try {
+      pgClient = new Client({ 
+        host: host,
+        port: parseInt(url.port || '5432'),
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: decodeURIComponent(url.pathname.substring(1)),
+        ssl: false // Server strictly forbids SSL
+      });
+      
+      await pgClient.connect();
+      console.log(`   ✅ Successfully connected via: ${host}`);
+      connected = true;
+      break;
+    } catch (err) {
+      console.log(`   ❌ Failed: ${err.message}`);
+      if (pgClient) {
+        await pgClient.end().catch(() => {});
+      }
+    }
+  }
+
+  if (!connected) {
+    console.error("\n💥 ALL connection methods exhausted. See errors above.");
+    process.exit(1);
+  }
 
   try {
-    await pgClient.connect();
-    console.log("🐘 Connected to PostgreSQL. Normalizing collection names...");
+    console.log("🐘 Collection normalization starting...");
 
     for (const [oldName, newName] of Object.entries(MAPPING)) {
       const res = await pgClient.query(
