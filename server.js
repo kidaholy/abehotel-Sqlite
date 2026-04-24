@@ -1,9 +1,27 @@
 const path = require('path');
 const fs = require('fs');
 
-console.log('--- Starting Bridge Server ---');
+const logFile = path.join(__dirname, 'production.log');
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+// Redirect console to file
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = function(...args) {
+  const msg = `[${new Date().toISOString()}] LOG: ${args.join(' ')}\n`;
+  logStream.write(msg);
+  originalLog.apply(console, args);
+};
+
+console.error = function(...args) {
+  const msg = `[${new Date().toISOString()}] ERR: ${args.join(' ')}\n`;
+  logStream.write(msg);
+  originalError.apply(console, args);
+};
+
+console.log('--- Bridge Server Bootstrap ---');
 console.log('Current __dirname:', __dirname);
-console.log('Target standalone path:', path.join(__dirname, '.next', 'standalone'));
 
 process.env.NODE_ENV = 'production';
 process.env.HOSTNAME = '127.0.0.1';
@@ -13,18 +31,18 @@ try {
   const standaloneDir = path.join(__dirname, '.next', 'standalone');
   
   if (!fs.existsSync(standaloneDir)) {
-    console.error('ERROR: Standalone directory not found at:', standaloneDir);
+    console.error('CRITICAL: Standalone directory missing at:', standaloneDir);
   } else {
     process.chdir(standaloneDir);
-    console.log('Changed working directory to:', process.cwd());
+    console.log('In standalone directory:', process.cwd());
     
     if (!fs.existsSync('./server.js')) {
-      console.error('ERROR: standalone/server.js not found!');
+      console.error('CRITICAL: standalone/server.js missing!');
     } else {
-      console.log('Requiring standalone server...');
+      console.log('Booting Next.js Standalone Server...');
       require('./server.js');
     }
   }
 } catch (err) {
-  console.error('CRITICAL ERROR in bridge server:', err);
+  console.error('FATAL EXCEPTION:', err);
 }
