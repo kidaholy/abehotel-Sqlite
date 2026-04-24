@@ -1,19 +1,9 @@
-const { createServer } = require('http');
-const { parse } = require('url');
-const next = require('next');
+// This is a bridge to run the Next.js standalone server on cPanel
+// It points to the optimized production build created by 'npm run build'
 
-const dev = false;
-const app = next({ dev });
-const handle = app.getRequestHandler();
+process.env.NODE_ENV = 'production';
+process.env.HOSTNAME = '127.0.0.1';
+process.env.PORT = process.env.PORT || 3000;
 
-app.prepare().then(() => {
-  createServer((req, res) => {
-    // Be sure to pass `true` as the second argument to `url.parse`.
-    // This tells it to parse the query portion of the URL.
-    const parsedUrl = parse(req.url, true);
-    handle(req, res, parsedUrl);
-  }).listen(process.env.PORT || 3000, (err) => {
-    if (err) throw err;
-    console.log('> Ready on port ' + (process.env.PORT || 3000));
-  });
-});
+// Import the standalone server
+require('./.next/standalone/server.js');
