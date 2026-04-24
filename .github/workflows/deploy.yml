@@ -7,36 +7,22 @@ on:
 
 jobs:
   deploy:
-    name: Deploy via SSH
+    name: Deploy via cPanel Webhook
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Yegara via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.YEGARA_HOST }}
-          username: ${{ secrets.YEGARA_USER }}
-          password: ${{ secrets.YEGARA_PASSWORD }}
-          port: ${{ secrets.YEGARA_PORT }}
-          script: |
-            set -e
-            echo "=== Navigating to project directory ==="
-            cd ~/repositories/abehotel-Sqlite
-
-            echo "=== Pulling latest code from GitHub ==="
-            git pull origin main
-
-            echo "=== Installing dependencies ==="
-            export PATH="$HOME/.nvm/versions/node/$(nvm current)/bin:$PATH" 2>/dev/null || true
-            npm install --omit=dev
-
-            echo "=== Building the Next.js app ==="
-            npm run build
-
-            echo "=== Restarting app via PM2 ==="
-            pm2 restart abehotel --update-env || pm2 start .next/standalone/server.js --name abehotel
-
-            echo "=== Deployment complete! ==="
+      - name: Trigger cPanel Git Deployment
+        run: |
+          curl -s -o response.txt -w "%{http_code}" \
+            --max-time 300 \
+            -H "Authorization: cpanel ${{ secrets.YEGARA_USER }}:${{ secrets.CPANEL_TOKEN }}" \
+            "https://${{ secrets.YEGARA_HOST }}:2083/execute/VersionControl/update?repository_root=%2Fhome%2F${{ secrets.YEGARA_USER }}%2Frepositories%2Fabehotel-Sqlite" \
+            | tee http_code.txt
+          echo ""
+          cat response.txt
+          HTTP_CODE=$(cat http_code.txt | tail -1)
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ cPanel deploy failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "✅ cPanel git pull triggered successfully"
