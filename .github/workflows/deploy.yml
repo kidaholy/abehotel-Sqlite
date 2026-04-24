@@ -16,7 +16,7 @@ jobs:
           curl -s -o response.txt -w "%{http_code}" \
             --max-time 300 \
             -H "Authorization: cpanel ${{ secrets.YEGARA_USER }}:${{ secrets.CPANEL_TOKEN }}" \
-            "https://${{ secrets.YEGARA_HOST }}:2083/execute/VersionControl/update?repository_root=%2Fhome%2F${{ secrets.YEGARA_USER }}%2Frepositories%2Fabehotel" \
+            "https://${{ secrets.YEGARA_HOST }}:2083/execute/VersionControl/update?repository_root=repositories%2Fabehotel" \
             | tee http_code.txt
           echo ""
           cat response.txt
