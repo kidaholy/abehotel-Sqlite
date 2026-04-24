@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=~/repositories/abehotel-Sqlite
+    - export DEPLOYPATH=~/repositories/hotel-app
     - export PATH=$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node | tail -1)/bin:$PATH
     - cd $DEPLOYPATH
     - mkdir -p .next/standalone/.next/static
