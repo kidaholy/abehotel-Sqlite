@@ -27,6 +27,16 @@ function resolveCollectionName(modelName: string) {
 }
 
 export function getCollection<T = any>(name: string) {
-  return getStoreSync().collection(resolveCollectionName(name)) as any as T
+  const collectionName = resolveCollectionName(name)
+  return new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        const collection = getStoreSync().collection(collectionName) as any
+        const value = collection[prop]
+        return typeof value === "function" ? value.bind(collection) : value
+      },
+    },
+  ) as any as T
 }
 
