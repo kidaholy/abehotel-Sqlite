@@ -5,6 +5,6 @@ deployment:
     - export PATH=$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node | tail -1)/bin:$PATH
     - cd $DEPLOYPATH
     - mkdir -p .next/standalone/.next/static
-    - cp -rq .next/static/. .next/standalone/.next/static/
-    - cp -rq public/. .next/standalone/public/
+    - cp -r .next/static/. .next/standalone/.next/static/
+    - cp -r public/. .next/standalone/public/
     - pm2 restart abehotel --update-env || pm2 start .next/standalone/server.js --name abehotel
