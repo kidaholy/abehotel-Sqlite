@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  name               String
+  email              String   @unique
+  password           String
+  plainPassword      String?
+  role               String
+  permissions        Json?
+  isActive           Boolean  @default(true)
+  floorId            String?
+  assignedCategories Json?    // Array of strings
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  ordersCreated      Order[]  @relation("OrderCreator")
+}
+
+model Order {
+  id               String   @id @default(uuid())
+  orderNumber      String   @unique
+  items            Json     // Array of OrderItem
+  totalAmount      Float
+  subtotal         Float
+  tax              Float
+  status           String
+  paymentMethod    String
+  customerName     String?
+  batchNumber      String?
+  tableNumber      String
+  tableId          String?
+  floorId          String?
+  floorNumber      String?
+  distributions    Json?
+  createdBy        String
+  creator          User     @relation("OrderCreator", fields: [createdBy], references: [id])
+  thresholdMinutes Int      @default(0)
+  isDeleted        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Stock {
+  id                   String   @id @default(uuid())
+  name                 String
+  unit                 String
+  unitType             String
+  quantity             Float    @default(0)
+  storeQuantity        Float    @default(0)
+  minLimit             Float    @default(0)
+  storeMinLimit        Float    @default(0)
+  averagePurchasePrice Float    @default(0)
+  unitCost             Float    @default(0)
+  totalPurchased       Float    @default(0)
+  totalConsumed        Float    @default(0)
+  totalInvestment      Float    @default(0)
+  sellUnitEquivalent   Float    @default(1)
+  isVIP                Boolean  @default(false)
+  vipLevel             Int      @default(1)
+  status               String   @default("active")
+  restockHistory       Json?    // Array of RestockEvent
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  storeLogs            StoreLog[]
+}
+
+model MenuItem {
+  id              String   @id @default(uuid())
+  menuId          String   @unique
+  name            String
+  description     String?
+  price           Float
+  category        String
+  mainCategory    String?
+  preparationTime Int?
+  image           String?
+  stockItemId     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Vip1MenuItem {
+  id              String   @id @default(uuid())
+  menuId          String   @unique
+  name            String
+  description     String?
+  price           Float
+  category        String
+  mainCategory    String?
+  preparationTime Int?
+  image           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Vip2MenuItem {
+  id              String   @id @default(uuid())
+  menuId          String   @unique
+  name            String
+  description     String?
+  price           Float
+  category        String
+  mainCategory    String?
+  preparationTime Int?
+  image           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Floor {
+  id          String   @id @default(uuid())
+  floorNumber String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Table {
+  id          String   @id @default(uuid())
+  tableNumber String   @unique
+  floorId     String
+  status      String   @default("available")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model StoreLog {
+  id           String   @id @default(uuid())
+  stockId      String
+  stock        Stock    @relation(fields: [stockId], references: [id])
+  type         String   // PURCHASE, TRANSFER, CONSUMPTION, ADJUSTMENT
+  quantity     Float
+  unit         String
+  pricePerUnit Float?
+  totalPrice   Float?
+  user         String
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+}
+
+model DailyExpense {
+  id          String   @id @default(uuid())
+  category    String
+  amount      Float
+  description String?
+  paidTo      String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+}
+
+model OperationalExpense {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Float
+  frequency   String?
+  lastPaid    DateTime?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model FixedAsset {
+  id              String    @id @default(uuid())
+  name            String
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  currentValue    Float?
+  depreciation    Float?
+  category        String?
+  location        String?
+  condition       String?
+  lastMaintenance DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model Room {
+  id           String   @id @default(uuid())
+  roomNumber   String   @unique
+  type         String
+  status       String   @default("available")
+  floorId      String?
+  pricePerDay  Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  mainCategory String?
+  createdAt    DateTime @default(now())
+}
+
+model Setting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value Json
+}
+
+model ReceptionRequest {
+  id         String   @id @default(uuid())
+  type       String   // CHECKIN, CHECKOUT, SERVICE
+  roomNumber String
+  status     String   @default("pending")
+  notes      String?
+  createdAt  DateTime @default(now())
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String
+  price       Float
+  category    String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model TransferRequest {
+  id           String   @id @default(uuid())
+  fromStockId  String?
+  toStockId    String?
+  quantity     Float
+  status       String   @default("pending")
+  requestedBy  String
+  approvedBy   String?
+  notes        String?
+  createdAt    DateTime @default(now())
+}

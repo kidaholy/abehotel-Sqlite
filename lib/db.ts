@@ -1,48 +1,73 @@
-import { PgDocStore } from "./pg"
+import { PrismaClient } from "@prisma/client"
 
 declare global {
   // eslint-disable-next-line no-var
-  var __abehotel_pg_store: PgDocStore | undefined
+  var prisma: PrismaClient | undefined
 }
 
-function getConnectionString() {
-  const fromEnv = process.env.DATABASE_URL
-  if (fromEnv && fromEnv.trim()) return fromEnv.trim()
+export const prisma = global.prisma || new PrismaClient()
 
-  // Build from standard PG* variables when DATABASE_URL is not set.
-  const host = process.env.PGHOST
-  const port = process.env.PGPORT || "5432"
-  const user = process.env.PGUSER
-  const password = process.env.PGPASSWORD
-  const database = process.env.PGDATABASE
-  if (host && user && password && database) {
-    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
-  }
-
-  // In production, fail fast to avoid silently reading the wrong database.
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Missing PostgreSQL configuration. Set DATABASE_URL (or PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE).")
-  }
-
-  return "postgresql://postgres:postgres@127.0.0.1:5432/abehotel"
-}
+if (process.env.NODE_ENV !== "production") global.prisma = prisma
 
 export async function connectDB() {
-  if (!global.__abehotel_pg_store) {
-    const connStr = getConnectionString()
-    global.__abehotel_pg_store = new PgDocStore(connStr)
-  }
-  return global.__abehotel_pg_store
+  return prisma
 }
 
 export async function getStore() {
-  return (await connectDB()) as PgDocStore
+  return new PrismaAdapter(prisma)
 }
 
 export function getStoreSync() {
-  if (!global.__abehotel_pg_store) {
-    const connStr = getConnectionString()
-    global.__abehotel_pg_store = new PgDocStore(connStr)
+  return new PrismaAdapter(prisma)
+}
+
+// Compatibility layer for the existing "collection" API until it's fully refactored
+// This allows the use of getCollection("User").find(...) etc.
+export class PrismaAdapter {
+  constructor(private client: PrismaClient) {}
+
+  collection(name: string) {
+    const modelName = name.charAt(0).toLowerCase() + name.slice(1)
+    const model = (this.client as any)[modelName]
+    
+    if (!model) {
+      throw new Error(`Model ${name} (resolved as ${modelName}) NOT found in Prisma Client`)
+    }
+
+    return {
+      find: (query = {}) => {
+        // Basic query transformation: convert { _id: "..." } to { id: "..." }
+        const where: any = {}
+        Object.entries(query).forEach(([k, v]) => {
+          if (k === '_id') where.id = v
+          else if (!k.startsWith('$')) where[k] = v
+        })
+        
+        return {
+          sort: (s: any) => ({
+            limit: (l: any) => ({
+              lean: () => model.findMany({ where, take: l, orderBy: s })
+            }),
+            lean: () => model.findMany({ where, orderBy: s })
+          }),
+          limit: (l: any) => ({
+            lean: () => model.findMany({ where, take: l })
+          }),
+          lean: () => model.findMany({ where })
+        }
+      },
+      findOne: (query = {}) => {
+        const where: any = {}
+        Object.entries(query).forEach(([k, v]) => {
+          if (k === '_id') where.id = v
+          else where[k] = v
+        })
+        return model.findFirst({ where })
+      },
+      findById: (id: string) => model.findUnique({ where: { id } }),
+      create: (data: any) => model.create({ data }),
+      findByIdAndUpdate: (id: string, update: any) => model.update({ where: { id }, data: update }),
+      findByIdAndDelete: (id: string) => model.delete({ where: { id } }),
+    }
   }
-  return global.__abehotel_pg_store
 }

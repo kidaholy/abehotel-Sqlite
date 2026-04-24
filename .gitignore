@@ -40,3 +40,8 @@ next-env.d.ts
 # vscode
 .vscode/
 .vercel
+
+/generated/prisma
+/deploy_ready/
+/deployment.zip
+.env

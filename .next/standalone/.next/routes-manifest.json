@@ -450,6 +450,12 @@
       "namedRegex": "^/api/debug\\-db(?:/)?$"
     },
     {
+      "page": "/api/debug-db-connection",
+      "regex": "^/api/debug\\-db\\-connection(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug\\-db\\-connection(?:/)?$"
+    },
+    {
       "page": "/api/expenses",
       "regex": "^/api/expenses(?:/)?$",
       "routeKeys": {},
