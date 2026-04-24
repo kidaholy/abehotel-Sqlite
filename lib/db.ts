@@ -5,9 +5,23 @@ declare global {
   var prisma: PrismaClient | undefined
 }
 
-export const prisma = global.prisma || new PrismaClient()
+let _prisma: PrismaClient | undefined
 
-global.prisma = prisma
+export const getPrisma = () => {
+  if (!_prisma) {
+    _prisma = global.prisma || new PrismaClient()
+    if (process.env.NODE_ENV !== "production") global.prisma = _prisma
+  }
+  return _prisma
+}
+
+// Export a proxy or a dummy for simple access if needed, 
+// but most routes use getPrisma() or similar now.
+export const prisma = new Proxy({} as PrismaClient, {
+  get: (target, prop) => {
+    return (getPrisma() as any)[prop]
+  }
+})
 
 export async function connectDB() {
   return prisma

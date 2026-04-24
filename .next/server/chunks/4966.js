@@ -1,1 +1,1 @@
-"use strict";exports.id=4966,exports.ids=[4966],exports.modules={4966:(a,b,c)=>{c.a(a,async(a,d)=>{try{c.r(b),c.d(b,{default:()=>g});var e=c(43658),f=a([e]);e=(f.then?(await f)():f)[0];let g=(0,e.X)("MenuItem");d()}catch(a){d(a)}})}};
+"use strict";exports.id=4966,exports.ids=[4966],exports.modules={4966:(a,b,c)=>{c.r(b),c.d(b,{default:()=>d});let d=(0,c(43658).X)("MenuItem")}};
