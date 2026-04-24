@@ -1,0 +1,42 @@
+name: Deploy to Yegara Server
+
+on:
+  push:
+    branches:
+      - main   # Change to 'master' if that is your default branch
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Yegara via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.YEGARA_HOST }}
+          username: ${{ secrets.YEGARA_USER }}
+          password: ${{ secrets.YEGARA_PASSWORD }}
+          port: ${{ secrets.YEGARA_PORT }}
+          script: |
+            set -e
+            echo "=== Navigating to project directory ==="
+            cd ~/repositories/abehotel-Sqlite
+
+            echo "=== Pulling latest code from GitHub ==="
+            git pull origin main
+
+            echo "=== Installing dependencies ==="
+            export PATH="$HOME/.nvm/versions/node/$(nvm current)/bin:$PATH" 2>/dev/null || true
+            npm install --omit=dev
+
+            echo "=== Building the Next.js app ==="
+            npm run build
+
+            echo "=== Restarting app via PM2 ==="
+            pm2 restart abehotel --update-env || pm2 start .next/standalone/server.js --name abehotel
+
+            echo "=== Deployment complete! ==="
