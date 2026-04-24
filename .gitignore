@@ -6,8 +6,10 @@
 # testing
 /coverage
 
-# next.js
-/.next/
+# next.js — keep built output for server deployment (no build step on server)
+/.next/*
+!/.next/static
+!/.next/standalone
 /out/
 
 # production

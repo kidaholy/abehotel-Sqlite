@@ -1,0 +1,1 @@
+"use strict";exports.id=1862,exports.ids=[1862],exports.modules={1862:(a,b,c)=>{c.a(a,async(a,d)=>{try{c.r(b),c.d(b,{default:()=>g});var e=c(43658),f=a([e]);e=(f.then?(await f)():f)[0];let g=(0,e.X)("Settings");d()}catch(a){d(a)}})}};
