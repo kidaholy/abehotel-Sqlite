@@ -1,10 +1,10 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/kidaholy/repositories/abehotel-Sqlite
+    - export DEPLOYPATH=~/repositories/abehotel-Sqlite
     - export PATH=$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node | tail -1)/bin:$PATH
     - cd $DEPLOYPATH
     - mkdir -p .next/standalone/.next/static
-    - cp -r .next/static/* .next/standalone/.next/static/
-    - cp -r public .next/standalone/
-    - pm2 restart abehotel --update-env || pm2 start $DEPLOYPATH/.next/standalone/server.js --name abehotel
+    - cp -rq .next/static/. .next/standalone/.next/static/
+    - cp -rq public/. .next/standalone/public/
+    - pm2 restart abehotel --update-env || pm2 start .next/standalone/server.js --name abehotel
