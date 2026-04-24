@@ -4,6 +4,4 @@ deployment:
     - export DEPLOYPATH=/home/kidaholy/repositories/abehotel-Sqlite
     - export PATH=$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node | tail -1)/bin:$PATH
     - cd $DEPLOYPATH
-    - npm install --omit=dev
-    - npm run build
     - pm2 restart abehotel --update-env || pm2 start $DEPLOYPATH/.next/standalone/server.js --name abehotel
