@@ -8,8 +8,11 @@
 
 # next.js — keep built output for server deployment (no build step on server)
 /.next/*
-!/.next/static
-!/.next/standalone
+!/.next/static/
+!/.next/standalone/
+!/.next/server/
+!/.next/*.json
+!/.next/*.js
 /out/
 
 # production

@@ -1,0 +1,1 @@
+"use strict";exports.id=7553,exports.ids=[7553],exports.modules={47553:(a,b,c)=>{c.a(a,async(a,d)=>{try{c.r(b),c.d(b,{default:()=>g});var e=c(43658),f=a([e]);e=(f.then?(await f)():f)[0];let g=(0,e.X)("Stock");d()}catch(a){d(a)}})}};
