@@ -15,6 +15,6 @@ export function getCollection<T = any>(name: string) {
         return typeof value === "function" ? value.bind(collection) : value
       },
     },
-  ) as any as T
+  ) as unknown as any as T
 }
 
