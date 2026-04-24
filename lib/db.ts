@@ -8,13 +8,23 @@ declare global {
 function getConnectionString() {
   const fromEnv = process.env.DATABASE_URL
   if (fromEnv && fromEnv.trim()) return fromEnv.trim()
-  
-  // High-reliability production fallback for Yegara
-  if (process.env.NODE_ENV === 'production') {
-    return "postgresql://abehotwe_abehotel:Holy123union@127.0.0.1:5432/abehotwe_abehotel_db"
+
+  // Build from standard PG* variables when DATABASE_URL is not set.
+  const host = process.env.PGHOST
+  const port = process.env.PGPORT || "5432"
+  const user = process.env.PGUSER
+  const password = process.env.PGPASSWORD
+  const database = process.env.PGDATABASE
+  if (host && user && password && database) {
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
   }
-  
-  return "postgresql://postgres:postgres@localhost:5432/abehotel"
+
+  // In production, fail fast to avoid silently reading the wrong database.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Missing PostgreSQL configuration. Set DATABASE_URL (or PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE).")
+  }
+
+  return "postgresql://postgres:postgres@127.0.0.1:5432/abehotel"
 }
 
 export async function connectDB() {
